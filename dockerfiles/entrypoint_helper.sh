@@ -57,14 +57,16 @@ get_value_from_conf_file() {
 # Execute SQL statement with attached user and password information.
 # -u is provided by the env var AUTH_USER and defaults to root;
 # -p is provided by the env var AUTH_PWD.
-exec_cmd() {
+exec_sql() {
   set +e
   local cmd=$1
+  # append user
   if [[ -n $AUTH_USER ]]; then
     cmd="$cmd -u$AUTH_USER"
   else
     cmd="$cmd -uroot"
   fi
+  # append passowrd
   if [[ -n $AUTH_PWD ]]; then
     cmd="$cmd -p$AUTH_PWD"
   fi

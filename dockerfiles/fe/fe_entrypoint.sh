@@ -22,8 +22,8 @@ declare QUERY_PORT
 declare FE_LEADER
 # fe probe interval: 2 seconds
 FE_PROBE_INTERVAL=2
-# timeout for probe leader: 120 seconds
-FE_PROBE_TIMEOUT=120
+# timeout for probe leader: 60 seconds
+FE_PROBE_TIMEOUT=60
 
 # force fqdn mode on
 ensure_enable_fqdn() {
@@ -31,7 +31,7 @@ ensure_enable_fqdn() {
 }
 
 show_frontends() {
-  exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e 'show frontends;'"
+  exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e 'SHOW FRONTENDS;'"
 }
 
 # collect env info from container
@@ -119,8 +119,8 @@ probe_leader_for_podx() {
   done
 }
 
-# add myself to fe leader as follower
-add_myself_to_leader() {
+# add self to fe leader as follower
+add_self() {
   set +e
   local start
   local expire
@@ -129,12 +129,12 @@ add_myself_to_leader() {
   expire=$((start + FE_PROBE_TIMEOUT))
 
   while true; do
-    doris_note "Add myself($POD_HOST:$EDIT_LOG_PORT) to FE leader($FE_LEADER:$EDIT_LOG_PORT) as follower..."
-    exec_sql "mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e \"ALTER SYSTEM ADD FOLLOWER \"$POD_HOST:$EDIT_LOG_PORT\";\""
+    doris_note "Add myself($POD_HOST:$EDIT_LOG_PORT) to FE leader($FE_LEADER:$EDIT_LOG_PORT) as FOLLOWER..."
+    exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e \"ALTER SYSTEM ADD FOLLOWER \"$POD_HOST:$EDIT_LOG_PORT\";\""
 
     # check if it was added successfully
-    if show_frontends | grep -q -w "$MYSELF" &>/dev/null; then
-      doris_note "Add myself to FE leader successfully."
+    if show_frontends | grep -q -w "$POD_HOST" &>/dev/null; then
+      doris_note "Add myself to cluster successfully."
       break
     fi
     # check probe process timeout
@@ -155,6 +155,7 @@ if [[ -f ${DORIS_HOME}/fe/meta/image/ROLE ]]; then
   # start fe with meta role exist.
   doris_note "Start FE with role meta exits."
   ensure_enable_fqdn
+  doris_note "Ready to start FE!"
   start_fe.sh
 else
   # start fe with meta role does not exist
@@ -165,8 +166,9 @@ else
   # fe leader exists
   if [[ -n $FE_LEADER ]]; then
     opts+=" --helper $FE_LEADER:$EDIT_LOG_PORT"
-    add_myself_to_leader
+    add_self
   fi
   ensure_enable_fqdn
+  doris_note "Ready to start FE!"
   start_fe.sh "$opts"
 fi
