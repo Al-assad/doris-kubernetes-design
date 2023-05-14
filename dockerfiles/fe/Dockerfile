@@ -37,7 +37,7 @@ RUN apt-get update && \
 	cd /opt && \
 	mv apache-doris-fe-x.x.x-bin /opt/apache-doris/fe
 
-ADD entrypoint_helper.sh /opt/apache-doris/fe/bin
+ADD ../entrypoint_helper.sh /opt/apache-doris/fe/bin
 ADD fe_entrypoint.sh /opt/apache-doris/fe/bin
 RUN chmod 755 /opt/apache-doris/fe/bin/entrypoint_helper.sh
 RUN chmod 755 /opt/apache-doris/fe/bin/fe_entrypoint.sh
