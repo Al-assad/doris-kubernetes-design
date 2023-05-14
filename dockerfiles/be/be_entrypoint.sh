@@ -19,7 +19,7 @@ declare FE_QUERY_PORT
 
 # be probe interval: 2 seconds
 BE_PROBE_INTERVAL=2
-# timeout for probe cn: 60 seconds
+# timeout for probing cn: 60 seconds
 BE_PROBE_TIMEOUT=60
 
 # collect env info from container
