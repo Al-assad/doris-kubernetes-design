@@ -33,7 +33,7 @@ collect_env() {
 
 # make sure node role is mix
 ensure_node_role() {
-  inject_item_into_conf_file "$BE_CONF_FILE" 'be_node_role' 'computation'
+  inject_item_into_conf_file "$BE_CONF_FILE" 'be_node_role' 'mix'
 }
 
 show_backends() {
@@ -50,7 +50,7 @@ add_self() {
   expire=$((start + BE_PROBE_TIMEOUT))
 
   while true; do
-    doris_note "Add myself($POD_HOST:$HEARTBEAT_PORT) to cluster as BACKEND(Compute Node)..."
+    doris_note "Add myself($POD_HOST:$HEARTBEAT_PORT) to cluster as BACKEND..."
     exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $FE_QUERY_PORT --skip-column-names --batch -e \"ALTER SYSTEM ADD BACKEND \"$POD_HOST:$HEARTBEAT_PORT\";\""
 
     # check if it was added successfully
@@ -75,5 +75,5 @@ fi
 collect_env
 ensure_node_role
 add_self
-doris_note "Ready to start BE(Compute Node)!"
+doris_note "Ready to start BE!"
 start_be.sh
