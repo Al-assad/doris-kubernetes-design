@@ -168,6 +168,7 @@ create_opr_account() {
     # check probe process timeout
     now=$(date +%s)
     if [[ $expire -le $now ]]; then
+      rm -f "${DORIS_HOME}"/fe/meta/image/ROLE
       doris_error "Create user($ACC_USER) with role(NODE_PRIV, ADMIN_PRIV) timed out."
     fi
     sleep $FE_PROBE_INTERVAL
