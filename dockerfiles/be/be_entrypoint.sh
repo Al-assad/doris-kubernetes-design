@@ -37,7 +37,7 @@ ensure_node_role() {
 }
 
 show_backends() {
-  exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e 'SHOW FRONTENDS;'"
+  exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $FE_QUERY_PORT --skip-column-names --batch -e 'SHOW FRONTENDS;'"
 }
 
 # add self to cluster
