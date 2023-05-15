@@ -146,6 +146,38 @@ add_self() {
   done
 }
 
+# create account for internal node operation.
+# user: $ACC_USER, password: $ACC_PWD, role: NODE_PRIV, ADMIN_PRIV
+create_opr_account() {
+  set +e
+  local start
+  local expire
+  local now
+  start=$(date +%s)
+  expire=$((start + FE_PROBE_TIMEOUT))
+
+  while true; do
+    doris_note "Create doris user($ACC_USER) for internal node operation..."
+    timeout 15 mysql --connect-timeout 2 -h "$POD_HOST" -P "$QUERY_PORT" -uroot --skip-column-names --batch -e "CREATE USER $ACC_USER IDENTIFIED BY '$ACC_PWD'; GRANT NODE_PRIV, ADMIN_PRIV ON RESOURCE * TO '$ACC_USER';"
+
+    # check if user was created successfully
+    if show_grants | grep -q -w "$ACC_USER" &>/dev/null; then
+      doris_note "Create user($ACC_USER) with role(NODE_PRIV, ADMIN_PRIV) successfully."
+      break
+    fi
+    # check probe process timeout
+    now=$(date +%s)
+    if [[ $expire -le $now ]]; then
+      doris_error "Create user($ACC_USER) with role(NODE_PRIV, ADMIN_PRIV) timed out."
+    fi
+    sleep $FE_PROBE_INTERVAL
+  done
+}
+
+show_grants() {
+  timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$QUERY_PORT" -uroot --skip-column-names --batch -e 'SHOW ALL GRANTS;'
+}
+
 # main process
 if [[ -n $FE_SVC ]]; then
   doris_error "Missing environment variable FE_SVC for the FE service name"
@@ -164,12 +196,17 @@ else
   collect_env
   ensure_enable_fqdn
   probe_leader
-  # fe leader exists
   if [[ -n $FE_LEADER ]]; then
+    # fe leader exists
     opts+=" --helper $FE_LEADER:$EDIT_LOG_PORT"
-    # todo
     add_self
+    doris_note "Ready to start FE!"
+    start_fe.sh "$opts"
+  else
+    # fe leader no exits, starts as master FE
+    doris_note "Ready to start FE as Master!"
+    start_fe.sh "$opts" &
+    create_opr_account
+    fg %1
   fi
-  doris_note "Ready to start FE!"
-  start_fe.sh "$opts"
 fi

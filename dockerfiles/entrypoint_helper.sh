@@ -6,7 +6,7 @@ shopt -s nullglob
 
 DORIS_HOME="/opt/apache-doris"
 
-# account name and password to execute sql, optional, default: k8sopr
+# account name and password to execute sql
 declare ACC_USER
 declare ACC_PWD
 
