@@ -2,8 +2,8 @@
 
 # Extra environment variables:
 #  FE_SVC: FE service name, required.
-#  AUTH_USER: account name to execute sql, optional, default: root
-#  AUTH_PWD: account password to execute sql, optional.
+#  ACC_USER: account name to execute sql, optional.
+#  ACC_PWD: account password to execute sql, optional.
 
 source entrypoint_helper.sh
 
@@ -31,7 +31,7 @@ ensure_enable_fqdn() {
 }
 
 show_frontends() {
-  exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e 'SHOW FRONTENDS;'"
+  timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e 'SHOW FRONTENDS;'
 }
 
 # collect env info from container
@@ -130,7 +130,7 @@ add_self() {
 
   while true; do
     doris_note "Add myself($POD_HOST:$EDIT_LOG_PORT) to FE leader($FE_LEADER:$EDIT_LOG_PORT) as FOLLOWER..."
-    exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $QUERY_PORT --skip-column-names --batch -e \"ALTER SYSTEM ADD FOLLOWER \"$POD_HOST:$EDIT_LOG_PORT\";\""
+    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD FOLLOWER \"$POD_HOST:$EDIT_LOG_PORT\";"
 
     # check if it was added successfully
     if show_frontends | grep -q -w "$POD_HOST" &>/dev/null; then
@@ -142,7 +142,7 @@ add_self() {
     if [[ $expire -le $now ]]; then
       doris_error "Add myself to FE leader timed out."
     fi
-    sleep FE_PROBE_INTERVAL
+    sleep $FE_PROBE_INTERVAL
   done
 }
 
@@ -162,13 +162,14 @@ else
   doris_note "Meta role does not exist, FE starts for the first time."
   opts=""
   collect_env
+  ensure_enable_fqdn
   probe_leader
   # fe leader exists
   if [[ -n $FE_LEADER ]]; then
     opts+=" --helper $FE_LEADER:$EDIT_LOG_PORT"
+    # todo
     add_self
   fi
-  ensure_enable_fqdn
   doris_note "Ready to start FE!"
   start_fe.sh "$opts"
 fi

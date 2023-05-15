@@ -6,6 +6,20 @@ shopt -s nullglob
 
 DORIS_HOME="/opt/apache-doris"
 
+# account name and password to execute sql, optional, default: k8sopr
+declare ACC_USER
+declare ACC_PWD
+
+ACC_USER_DEFAULT="k8sopr"
+ACC_PWD_DEFAULT="NM7Cr4k9SfH6f5w0pdEJ4A=="
+
+if [[ -z $ACC_USER ]]; then
+  ACC_USER=$ACC_USER_DEFAULT
+fi
+if [[ -z $ACC_PWD ]]; then
+  ACC_PWD=$ACC_PWD_DEFAULT
+fi
+
 # Logging functions
 doris_log() {
   local type=$1
@@ -52,23 +66,4 @@ get_value_from_conf_file() {
     value=$default_value
   fi
   echo "$value"
-}
-
-# Execute SQL statement with attached user and password information.
-# -u is provided by the env var AUTH_USER and defaults to root;
-# -p is provided by the env var AUTH_PWD.
-exec_sql() {
-  set +e
-  local cmd=$1
-  # append user
-  if [[ -n $AUTH_USER ]]; then
-    cmd="$cmd -u$AUTH_USER"
-  else
-    cmd="$cmd -uroot"
-  fi
-  # append passowrd
-  if [[ -n $AUTH_PWD ]]; then
-    cmd="$cmd -p$AUTH_PWD"
-  fi
-  eval cmd
 }

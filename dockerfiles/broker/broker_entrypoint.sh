@@ -3,8 +3,8 @@
 # Extra environment variables:
 #  FE_SVC: FE service name, required.
 #  FE_QUERY_PORT: FE service query port, optional, default: 9030
-#  AUTH_USER: account name to execute sql, optional, default: root
-#  AUTH_PWD: account password to execute sql, optional.
+#  ACC_USER: account name to execute sql, optional, default: k8sopr
+#  ACC_PWD: account password to execute sql, optional.
 
 source entrypoint_helper.sh
 
@@ -32,7 +32,7 @@ collect_env() {
 }
 
 show_brokers() {
-  exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $FE_QUERY_PORT --skip-column-names --batch -e 'SHOW BROKER;'"
+  timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$FE_QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e 'SHOW BROKER;'
 }
 
 # add self to cluster
@@ -46,7 +46,7 @@ add_self() {
 
   while true; do
     doris_note "Add myself($POD_HOST:$BROKER_IPC_PORT) to cluster as BROKER..."
-    exec_sql "timeout 15 mysql --connect-timeout 2 -h $FE_SVC -P $FE_QUERY_PORT --skip-column-names --batch -e \"ALTER SYSTEM ADD BROKER \"$POD_HOST:$BROKER_IPC_PORT\";\""
+    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$FE_QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD BROKER \"$POD_HOST:$BROKER_IPC_PORT\";"
 
     # check if it was added successfully
     if show_brokers | grep -q -w "$POD_HOST" &>/dev/null; then
@@ -58,7 +58,7 @@ add_self() {
     if [[ $expire -le $now ]]; then
       doris_error "Add myself to cluster timed out."
     fi
-    sleep PROBE_INTERVAL
+    sleep $PROBE_INTERVAL
   done
 }
 
