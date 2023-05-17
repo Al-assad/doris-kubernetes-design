@@ -2,7 +2,7 @@ version: "3"
 
 services:
   fe:
-    image: "apache/doris-fe:1.2.3-x86_64"
+    image: "apache/doris-fe:1.2.3"
     container_name: doris-fe
     hostname: doris-fe
     environment:
@@ -14,7 +14,7 @@ services:
       - doris_net
 
   be:
-    image: "apache/doris-be:1.2.3-x86_64"
+    image: "apache/doris-be:1.2.3"
     container_name: doris-be
     hostname: doris-be
     environment:
@@ -25,7 +25,7 @@ services:
       - doris_net
 
   broker:
-    image: "apache/doris-broker:1.2.3-x86_64"
+    image: "apache/doris-broker:1.2.3"
     container_name: doris-broker
     hostname: doris-broker
     environment:

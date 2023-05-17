@@ -3,7 +3,7 @@ version: "3"
 services:
 
   fe-0:
-    image: "apache/doris-fe:1.2.3-x86_64"
+    image: "apache/doris-fe:1.2.3"
     container_name: doris-fe-0
     hostname: doris-fe-0
     environment:
@@ -15,7 +15,7 @@ services:
       - doris_net
 
   fe-1:
-    image: "apache/doris-fe:1.2.3-x86_64"
+    image: "apache/doris-fe:1.2.3"
     container_name: doris-fe-1
     hostname: doris-fe-1
     environment:
@@ -27,7 +27,7 @@ services:
       - doris_net
 
   fe-2:
-    image: "apache/doris-fe:1.2.3-x86_64"
+    image: "apache/doris-fe:1.2.3"
     container_name: doris-fe-2
     hostname: doris-fe-2
     environment:
@@ -39,7 +39,7 @@ services:
       - doris_net
 
   be-0:
-    image: "apache/doris-be:1.2.3-x86_64"
+    image: "apache/doris-be:1.2.3"
     container_name: doris-be-0
     hostname: doris-be-0
     environment:
@@ -50,7 +50,7 @@ services:
       - doris_net
 
   be-1:
-    image: "apache/doris-be:1.2.3-x86_64"
+    image: "apache/doris-be:1.2.3"
     container_name: doris-be-1
     hostname: doris-be-1
     environment:
@@ -61,7 +61,7 @@ services:
       - doris_net
 
   be-2:
-    image: "apache/doris-be:1.2.3-x86_64"
+    image: "apache/doris-be:1.2.3"
     container_name: doris-be-2
     hostname: doris-be-2
     environment:

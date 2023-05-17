@@ -18,14 +18,20 @@
 # Base on https://github.com/apache/doris/blob/master/docker/runtime/be/Dockerfile
 
 # choose a base image
-FROM openjdk:8u342-jdk
+FROM --platform=$BUILDPLATFORM openjdk:8u342-jdk
 
 # set environment variables
 ENV JAVA_HOME="/usr/local/openjdk-8/" \
 	PATH="/opt/apache-doris/be/bin:${PATH}"
 
-# download the software to the mirror and replace it as needed
-ADD ./resource/apache-doris-be-x.x.x-bin-x86_64.tar.gz /opt/
+# choose platform-specific binary package
+RUN if [[ "$TARGETPLATFORM" == "linux/amd64" ]]; then \
+      ADD ./resource/apache-doris-be-*-bin-x86_64.tar.gz /opt/ \
+    elif [[ "$TARGETPLATFORM" == "linux/arm64*" ]]; then \
+      ADD ./resource/apache-doris-be-*-bin-arm.tar.gz /opt/ \
+    else \
+      echo "Unsupported platform: $TARGETPLATFORM"; exit 1; \
+    fi
 
 # deploy software
 RUN apt-get update && \
@@ -33,7 +39,7 @@ RUN apt-get update && \
 	apt-get clean && \
 	mkdir /opt/apache-doris && \
 	cd /opt && \
-	mv apache-doris-be-x.x.x-bin-x86_64 /opt/apache-doris/be
+	mv apache-doris-be-* /opt/apache-doris/be
 
 ADD ../entrypoint_helper.sh /opt/apache-doris/be/bin
 ADD cn_entrypoint.sh /opt/apache-doris/be/bin

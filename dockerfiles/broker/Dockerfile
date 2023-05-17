@@ -18,15 +18,20 @@
 # Base on https://github.com/apache/doris/blob/master/docker/runtime/broker/Dockerfile
 
 # choose a base image
-FROM openjdk:8u342-jdk
+FROM --platform=$BUILDPLATFORM openjdk:8u342-jdk
 
 # set environment variables
 ENV JAVA_HOME="/usr/local/openjdk-8/" \
     PATH="/opt/apache-doris/broker/bin:$PATH"
 
-# Download the software to the mirror, where the broker directory is synchronously compressed to the binary package of FE,
-# which needs to be decompressed and repackaged by itself, and can be replaced as needed
-ADD ./resource/apache_hdfs_broker.tar.gz /opt/
+# choose platform-specific binary package
+RUN if [[ "$TARGETPLATFORM" == "linux/amd64" ]]; then \
+      ADD ./resource/apache-doris-dependencies-*-bin-x86_64.tar.gz /opt/ \
+    elif [[ "$TARGETPLATFORM" == "linux/arm64*" ]]; then \
+      ADD ./resource/apache-doris-dependencies-*-bin-arm.tar.gz /opt/ \
+    else \
+      echo "Unsupported platform: $TARGETPLATFORM"; exit 1; \
+    fi
 
 # deploy software
 RUN apt-get update && \
@@ -34,7 +39,7 @@ RUN apt-get update && \
     apt-get clean && \
     mkdir /opt/apache-doris && \
     cd /opt && \
-    mv apache_hdfs_broker /opt/apache-doris/broker
+    mv apache-doris-dependencies-*/apache_hdfs_broker /opt/apache-doris/broker
 
 ADD ../entrypoint_helper.sh /opt/apache-doris/broker/bin
 ADD broker_entrypoint.sh /opt/apache-doris/broker/bin

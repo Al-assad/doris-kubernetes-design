@@ -27,13 +27,22 @@ ENV JAVA_HOME="/usr/local/openjdk-8/" \
 # download the software to the mirror and replace it as needed
 ADD ./resource/apache-doris-fe-x.x.x-bin.tar.gz /opt/
 
+# choose platform-specific binary package
+RUN if [[ "$TARGETPLATFORM" == "linux/amd64" ]]; then \
+      ADD ./resource/apache-doris-fe-*-bin-x86_64.tar.gz /opt/ \
+    elif [[ "$TARGETPLATFORM" == "linux/arm64*" ]]; then \
+      ADD ./resource/apache-doris-fe-*-bin-arm.tar.gz /opt/ \
+    else \
+      echo "Unsupported platform: $TARGETPLATFORM"; exit 1; \
+    fi
+
 # deploy software
 RUN apt-get update && \
 	apt-get install -y default-mysql-client && \
 	apt-get clean && \
 	mkdir /opt/apache-doris && \
 	cd /opt && \
-	mv apache-doris-fe-x.x.x-bin /opt/apache-doris/fe
+	mv apache-doris-fe-* /opt/apache-doris/fe
 
 ADD ../entrypoint_helper.sh /opt/apache-doris/fe/bin
 ADD fe_entrypoint.sh /opt/apache-doris/fe/bin
