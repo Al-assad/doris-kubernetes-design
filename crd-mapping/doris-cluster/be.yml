@@ -1,75 +1,76 @@
-# FE service used by end user
+# BE service used by end user
 
 kind: Service
 apiVersion: v1
 metadata:
-  name: basic-fe
+  name: basic-be
   labels:
     app.kubernetes.io/name: doris-cluster
     app.kubernetes.io/instance: basic
-    app.kubernetes.io/component: fe
+    app.kubernetes.io/component: be
     app.kubernetes.io/managed-by: doris-operator
 spec:
   ports:
-    - name: http-port
-      port: 8030
-    - name: query-port
-      port: 9030
+    - name: webserver-port
+      port: 8040
   type: ClusterIP
 
 ---
-# FE service used by peer
+# BE service used by peer
 
 kind: Service
 apiVersion: v1
 metadata:
-  name: basic-fe-peer
+  name: basic-be-peer
   labels:
     app.kubernetes.io/name: doris-cluster
     app.kubernetes.io/instance: basic
-    app.kubernetes.io/component: fe
+    app.kubernetes.io/component: be
     app.kubernetes.io/managed-by: doris-operator
 spec:
   ports:
-    - name: edit-log-port
-      port: 9010
-    - name: rpc-port
-      port: 9020
+    - name: heartbeat-service-port
+      port: 9050
+    - name: be-port
+      port: 9060
+    - name: brpc-port
+      port: 8060
   type: ClusterIP
 
+
 ---
-# FE stateful set
+# BE stateful set
 
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
-  name: basic-fe
+  name: basic-be
   labels:
     app.kubernetes.io/name: doris-cluster
     app.kubernetes.io/instance: basic
-    app.kubernetes.io/component: fe
+    app.kubernetes.io/component: be
     app.kubernetes.io/managed-by: doris-operator
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: doris-cluster
       app.kubernetes.io/instance: basic
-      app.kubernetes.io/component: fe
+      app.kubernetes.io/component: be
       app.kubernetes.io/managed-by: doris-operator
-  serviceName: basic-fe-peer
+  serviceName: basic-be-peer
   replicas: 3
 
   volumeClaimTemplates:
     - kind: PersistentVolumeClaim
       apiVersion: v1
       metadata:
-        name: fe-meta
+        name: be-storage
       spec:
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 200Gi
+            storage: 500Gi
         volumeMode: Filesystem
         storageClassName: local
 
@@ -78,34 +79,36 @@ spec:
       labels:
         app.kubernetes.io/name: doris-cluster
         app.kubernetes.io/instance: basic
-        app.kubernetes.io/component: fe
+        app.kubernetes.io/component: be
         app.kubernetes.io/managed-by: doris-operator
     spec:
       volumes:
         - name: conf
           configMap:
-            name: basic-fe-config
-        - name: fe-log
+            name: basic-be-config
+        - name: be-log
           emptyDir: { }
       containers:
-        - name: fe
-          image: 'apache/doris-fe:1.2.3'
+        - name: be
+          image: 'apache/doris-be:1.2.3'
           resources:
             requests:
               cpu: '4'
-              memory: 16Gi
+              memory: 8Gi
           ports:
-            - name: http-port
-              containerPort: 8030
-            - name: edit-log-port
-              containerPort: 9010
-            - name: rpc-port
-              containerPort: 9020
-            - name: query-port
-              containerPort: 9030
+            - name: webserver-port
+              containerPort: 8040
+            - name: brpc-port
+              containerPort: 8060
+            - name: heartbeat-service-port
+              containerPort: 9050
+            - name: be-port
+              containerPort: 9060
           env:
             - name: FE_SVC
               value: basic-fe
+            - name: FE_QUERY_PORT
+              value: '9030'
             - name: ACC_USER
               valueFrom:
                 secretKeyRef:
@@ -118,55 +121,35 @@ spec:
                   key: password
           volumeMounts:
             - name: conf
-              mountPath: /opt/apache-doris/fe/conf
-            - name: fe-meta
-              mountPath: /opt/apache-doris/fe/meta
-            - name: fe-log
-              mountPath: /opt/apache-doris/fe/log
+              mountPath: /opt/apache-doris/be/conf
+            - name: be-storage
+              mountPath: /opt/apache-doris/be/storage
+            - name: be-log
+              mountPath: /opt/apache-doris/be/log
           readinessProbe:
             tcpSocket:
-              port: 9030
-            initialDelaySeconds: 3
+              port: 9050
             timeoutSeconds: 1
             periodSeconds: 5
             successThreshold: 1
             failureThreshold: 3
 
 ---
-# FE configmap
+# BE configmap
 
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: basic-fe-config
+  name: basic-be-config
   labels:
     app.kubernetes.io/name: doris-cluster
     app.kubernetes.io/instance: basic
-    app.kubernetes.io/component: fe
+    app.kubernetes.io/component: be
     app.kubernetes.io/managed-by: doris-operator
 data:
-  fe.conf: |
+  be.conf: |
     sys_log_level = INFO
-    http_port = 8030
-    rpc_port = 9020
-    query_port = 9030
-    edit_log_port = 9010
-    mysql_service_nio_enabled = true
-    prefer_compute_node_for_external_table=true
-
----
-# Sql query account for k8s-operator secret
-
-kind: Secret
-apiVersion: v1
-metadata:
-  name: basic-opr-account
-  labels:
-    app.kubernetes.io/name: doris-cluster
-    app.kubernetes.io/instance: basic
-    app.kubernetes.io/managed-by: doris-operator
-type: Opaque
-data:
-  # user: k8sopr
-  user: azhzb3By
-  password: WW1GelpRPT0=
+    be_port = 9060
+    webserver_port = 8040
+    heartbeat_service_port = 9050
+    brpc_port = 8060

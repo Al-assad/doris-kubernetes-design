@@ -1,0 +1,122 @@
+# CN service used by peer
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: basic-cn-peer
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: cn
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  ports:
+    - name: heartbeat-service-port
+      port: 9050
+    - name: be-port
+      port: 9060
+    - name: brpc-port
+      port: 8060
+  type: ClusterIP
+
+
+---
+# CN stateful set
+
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: basic-cn
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: cn
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: doris-cluster
+      app.kubernetes.io/instance: basic
+      app.kubernetes.io/component: cn
+      app.kubernetes.io/managed-by: doris-operator
+  serviceName: basic-cn-peer
+  replicas: 2
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: doris-cluster
+        app.kubernetes.io/instance: basic
+        app.kubernetes.io/component: cn
+        app.kubernetes.io/managed-by: doris-operator
+    spec:
+      volumes:
+        - name: conf
+          configMap:
+            name: basic-cn-config
+        - name: cn-log
+          emptyDir: { }
+      containers:
+        - name: cn
+          image: 'apache/doris-cn:1.2.3'
+          resources:
+            requests:
+              cpu: '4'
+              memory: 8Gi
+          ports:
+            - name: webserver-port
+              containerPort: 8040
+            - name: brpc-port
+              containerPort: 8060
+            - name: heartbeat-service-port
+              containerPort: 9050
+            - name: be-port
+              containerPort: 9060
+          env:
+            - name: FE_SVC
+              value: basic-fe
+            - name: FE_QUERY_PORT
+              value: '9030'
+            - name: ACC_USER
+              valueFrom:
+                secretKeyRef:
+                  name: basic-opr-account
+                  key: user
+            - name: ACC_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: basic-opr-account
+                  key: password
+          volumeMounts:
+            - name: conf
+              mountPath: /opt/apache-doris/be/conf
+            - name: cn-log
+              mountPath: /opt/apache-doris/be/log
+          readinessProbe:
+            tcpSocket:
+              port: 9050
+            timeoutSeconds: 1
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+---
+# CN configmap
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-cn-config
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: cn
+    app.kubernetes.io/managed-by: doris-operator
+data:
+  be.conf: |
+    sys_log_level = INFO
+    be_port = 9060
+    webserver_port = 8040
+    heartbeat_service_port = 9050
+    brpc_port = 8060
+    be_node_role=computation
