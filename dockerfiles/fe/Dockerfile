@@ -24,9 +24,6 @@ FROM openjdk:8u342-jdk
 ENV JAVA_HOME="/usr/local/openjdk-8/" \
 	PATH="/opt/apache-doris/fe/bin:${PATH}"
 
-# download the software to the mirror and replace it as needed
-ADD ./resource/apache-doris-fe-x.x.x-bin.tar.gz /opt/
-
 # choose platform-specific binary package
 RUN if [[ "$TARGETPLATFORM" == "linux/amd64" ]]; then \
       ADD ./resource/apache-doris-fe-*-bin-x86_64.tar.gz /opt/ \
