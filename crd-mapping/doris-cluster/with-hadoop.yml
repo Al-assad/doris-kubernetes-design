@@ -1,0 +1,122 @@
+#file: noinspection KubernetesMissingKeys
+# Adding additional hadoop cluster connection information to a doris cluster.
+
+# FE
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: basic-fe
+# ...
+spec:
+  template:
+    spec:
+      hostAliases:
+        - ip: 10.233.123.189
+          hostnames:
+            - hadoop-01
+        - ip: 10.233.123.179
+          hostnames:
+            - hadoop-02
+        - ip: 10.233.123.179
+          hostnames:
+            - hadoop-03
+  # ...
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-fe-config
+# ...
+data:
+  fe.conf: |
+  hdfs-site.xml: |
+    <configuration>
+        ...
+    </configuration>
+  hive-site.xml: |
+    <configuration>
+        ...
+    </configuration>
+
+
+# BE
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: basic-be
+# ...
+spec:
+  template:
+    spec:
+      hostAliases:
+        - ip: 10.233.123.189
+          hostnames:
+            - hadoop-01
+        - ip: 10.233.123.179
+          hostnames:
+            - hadoop-02
+        - ip: 10.233.123.179
+          hostnames:
+            - hadoop-03
+  # ...
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-be-config
+# ...
+data:
+  be.conf: |
+  hdfs-site.xml: |
+    <configuration>
+        ...
+    </configuration>
+  hive-site.xml: |
+    <configuration>
+        ...
+    </configuration>
+
+
+# Broker
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: basic-broker
+# ...
+spec:
+  template:
+    spec:
+      hostAliases:
+        - ip: 10.233.123.189
+          hostnames:
+            - hadoop-01
+        - ip: 10.233.123.179
+          hostnames:
+            - hadoop-02
+        - ip: 10.233.123.179
+          hostnames:
+            - hadoop-03
+  # ...
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-broker-config
+# ...
+data:
+  apache_hdfs_broker: |
+  log4j.properties: |
+  hdfs-site.xml: |
+    <configuration>
+        ...
+    </configuration>
+  hive-site.xml: |
+    <configuration>
+        ...
+    </configuration>
