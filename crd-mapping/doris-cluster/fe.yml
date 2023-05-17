@@ -1,0 +1,159 @@
+# FE service used by end user
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: basic-fe
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: fe
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  ports:
+    - name: http-port
+      port: 8030
+    - name: query-port
+      port: 9030
+  type: ClusterIP
+
+---
+# FE service used by peer
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: basic-fe-peer
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: fe
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  ports:
+    - name: edit-log-port
+      port: 9010
+    - name: rpc-port
+      port: 9020
+  type: ClusterIP
+
+---
+# FE stateful set
+
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: basic-fe
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: fe
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: doris-cluster
+      app.kubernetes.io/instance: basic
+      app.kubernetes.io/component: fe
+      app.kubernetes.io/managed-by: doris-operator
+  serviceName: basic-fe-peer
+  replicas: 3
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: doris-cluster
+        app.kubernetes.io/instance: basic
+        app.kubernetes.io/component: fe
+        app.kubernetes.io/managed-by: doris-operator
+    spec:
+      volumes:
+        - name: conf
+          configMap:
+            name: basic-fe-config
+        - name: fe-meta
+          emptyDir: { }
+        - name: fe-log
+          emptyDir: { }
+      containers:
+        - name: fe
+          image: 'apache/doris-fe:1.2.3'
+          resources:
+            requests:
+              cpu: '4'
+              memory: 16Gi
+          ports:
+            - name: http-port
+              containerPort: 8030
+            - name: edit-log-port
+              containerPort: 9010
+            - name: rpc-port
+              containerPort: 9020
+            - name: query-port
+              containerPort: 9030
+          env:
+            - name: FE_SVC
+              value: basic-fe
+            - name: ACC_USER
+              valueFrom:
+                secretKeyRef:
+                  name: basic-opr-account
+                  key: user
+            - name: ACC_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: basic-opr-account
+                  key: password
+          volumeMounts:
+            - name: conf
+              mountPath: /opt/apache-doris/fe/conf
+            - name: fe-meta
+              mountPath: /opt/apache-doris/fe/meta
+            - name: fe-log
+              mountPath: /opt/apache-doris/fe/log
+          readinessProbe:
+            tcpSocket:
+              port: 9030
+            initialDelaySeconds: 3
+            timeoutSeconds: 1
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+---
+# FE configmap
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-fe-config
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: fe
+    app.kubernetes.io/managed-by: doris-operator
+data:
+  fe.conf: |
+    sys_log_level = INFO
+    http_port = 8030
+    rpc_port = 9020
+    query_port = 9030
+    edit_log_port = 9010
+    mysql_service_nio_enabled = true
+
+---
+# Sql query account for k8s-operator secret
+
+kind: Secret
+apiVersion: v1
+metadata:
+  name: basic-opr-account
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/managed-by: doris-operator
+type: Opaque
+data:
+  # user: k8sopr
+  user: azhzb3By
+  password: WW1GelpRPT0=
