@@ -1,0 +1,192 @@
+# Doris init Job
+# Modify default user password and execute init sql scripts.
+
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: basic-doris-initializer
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: initializer
+    app.kubernetes.io/managed-by: doris-operator
+    doris.apache.org/initializer: initialize-basic
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: doris-cluster
+        app.kubernetes.io/instance: basic
+        app.kubernetes.io/component: initializer
+        app.kubernetes.io/managed-by: doris-operator
+        doris.apache.org/initializer: initialize-basic
+    spec:
+      volumes:
+        - name: password
+          secret:
+            secretName: basic-secret
+            defaultMode: 420
+        - name: init-sql
+          configMap:
+            name: basic-doris-initializer
+            defaultMode: 420
+            items:
+              - key: init-sql
+                path: init.sql
+        - name: check-conn-script
+          configMap:
+            name: basic-doris-initializer
+            defaultMode: 420
+            items:
+              - key: check-conn-script
+                path: check_conn.sh
+        - name: start-script
+          configMap:
+            name: basic-doris-initializer
+            defaultMode: 420
+            items:
+              - key: start-script
+                path: start.py
+
+      # init container: checking fe query connection.
+      initContainers:
+        - name: wait
+          image: 'tnir/mysqlclient'
+          command: [ 'sh', '/usr/local/bin/check_conn.sh' ]
+          volumeMounts:
+            - name: check-conn-script
+              mountPath: /usr/local/bin/check_conn.sh
+              subPath: check_conn.sh
+              readOnly: true
+          env:
+            - name: FE_SVC
+              value: basic-fe
+            - name: FE_QUERY_PORT
+              value: '9030'
+
+      # main container: execute init sql scripts.
+      containers:
+        - name: mysql-client
+          image: 'tnir/mysqlclient'
+          command: [ 'python', '/usr/local/bin/start.py' ]
+          volumeMounts:
+            - name: start-script
+              mountPath: /usr/local/bin/start.py
+              subPath: start.py
+              readOnly: true
+            - name: password
+              mountPath: /etc/doris/password
+              readOnly: true
+            - name: init-sql
+              mountPath: /etc/doris/init.sql
+              subPath: init.sql
+              readOnly: true
+          env:
+            - name: FE_SVC
+              value: basic-fe
+            - name: FE_QUERY_PORT
+              value: '9030'
+            - name: ACC_USER
+              valueFrom:
+                secretKeyRef:
+                  name: basic-opr-account
+                  key: user
+            - name: ACC_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: basic-opr-account
+                  key: password
+
+---
+# Doris default user password secret
+
+kind: Secret
+apiVersion: v1
+metadata:
+  name: basic-secret
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: initializer
+    app.kubernetes.io/managed-by: doris-operator
+type: Opaque
+data:
+  root: WW1GelpRPT0=
+  admin: WW1Gelp32PT0=
+
+---
+# Doris init sql scripts
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-doris-initializer
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: initializer
+    app.kubernetes.io/managed-by: doris-operator
+data:
+  init-sql: |
+    create database if not exists example;
+
+  check-conn-script: |
+    trap exit TERM
+    host=$FE_SVC
+    port=$FE_QUERY_PORT
+    while true; do
+      nc -zv -w 3 $host $port
+      if [ $? -eq 0 ]; then
+        break
+      else
+        echo "info: failed to connect to $host:$port, sleep 1 second then retry"
+        sleep 1
+      fi
+    done
+    echo "info: successfully connected to $host:$port, able to initialize Doris now"
+
+  start-script: |
+    import os, sys, time, MySQLdb
+    
+    host = os.environ.get('FE_SVC')
+    port = os.environ.get('FE_QUERY_PORT')
+    acc_user = os.environ.get('ACC_USER')
+    acc_password = os.environ.get('ACC_PASSWORD')
+    retry_count = 0
+    
+    for i in range(0, 10):
+      try:
+        conn = MySQLdb.connect(host=host, port=port, user=acc_user, passwd=acc_password, connect_timeout=5)
+      except MySQLdb.OperationalError as e:
+        print(e)
+        retry_count += 1
+        time.sleep(1)
+        continue
+      break
+    if retry_count == 10:
+      sys.exit(1)
+    
+    password_dir = '/etc/doris/password'
+    
+    for file in os.listdir(password_dir):
+      if file.startswith('.'):
+        continue
+      user = file
+      with open(os.path.join(password_dir, file), 'r') as f:
+        lines = f.read().splitlines()
+        password = lines[0] if len(lines) > 0 else ""
+      if user == 'root' or user == 'admin':
+        conn.cursor().execute("set password for %s = password(%s);", (user, password))
+    
+    with open('/etc/doris/init.sql', 'r') as f:
+      sql = f.read()
+      conn.cursor().execute(sql)
+      conn.commit()
+      
+      conn.cursor().execute("flush privileges;")
+      conn.commit()
+      conn.close()
