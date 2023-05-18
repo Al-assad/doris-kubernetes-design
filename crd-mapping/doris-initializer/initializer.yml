@@ -13,7 +13,6 @@ metadata:
     doris.apache.org/initializer: initialize-basic
 spec:
   parallelism: 1
-  completions: 1
   backoffLimit: 0
 
   template:
