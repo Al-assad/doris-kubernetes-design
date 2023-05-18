@@ -1,0 +1,42 @@
+# Auto scaler for CN
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+metadata:
+  name: basic-cn-autoscaler
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: cn-autoscaler
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  scaleTargetRef:
+    kind: StatefulSet
+    apiVersion: apps/v1
+    name: basic-cn
+  maxReplicas: 10
+  minReplicas: 1
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
