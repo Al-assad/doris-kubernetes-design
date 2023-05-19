@@ -17,6 +17,7 @@ for i in range(0, 10):
         continue
     break
 if retry_count == 10:
+    print("failed to connect to FE.")
     sys.exit(1)
 
 # modify the password of default user
