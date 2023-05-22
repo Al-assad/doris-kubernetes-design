@@ -1,0 +1,213 @@
+# Prometheus service
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: basic-prometheus
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  ports:
+    - name: http-prometheus
+      port: 9090
+  type: ClusterIP
+
+---
+# Grafana service
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: basic-grafana
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  ports:
+    - name: http-grafana
+      port: 3000
+  type: ClusterIP
+
+---
+# Monitor Deployment including prometheus and grafana instances.
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: basic-monitor
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: doris-cluster
+      app.kubernetes.io/instance: basic
+      app.kubernetes.io/component: monitor
+      app.kubernetes.io/managed-by: doris-operator
+  replicas: 1
+
+  # todo service account name
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: doris-cluster
+        app.kubernetes.io/instance: basic
+        app.kubernetes.io/component: monitor
+        app.kubernetes.io/managed-by: doris-operator
+    spec:
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: basic-monitor-config
+            defaultMode: 420
+            items:
+              - key: 'prometheus.yml'
+                path: 'prometheus.yml'
+        - name: grafana-datasource
+          configMap:
+            name: basic-monitor-config
+            defaultMode: 420
+            items:
+              - key: 'datasource.yml'
+                path: 'doris-cluster-datasource.yml'
+        - name: grafana-dashboard
+          configMap:
+            name: basic-monitor-config
+            defaultMode: 420
+            items:
+              - key: 'dashboards.json'
+                path: 'doris-cluster-dashboards.json'
+        - name: data-storage
+          emptyDir: { }
+
+      containers:
+        # prometheus container
+        - name: prometheus
+          image: 'prom/prometheus:v2.37.8'
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/data/prometheus"
+            - "--web.enable-lifecycle"
+            - "--storage.tsdb.retention.time=7d"
+          ports:
+            - name: prometheus
+              containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: data-storage
+              mountPath: /data
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+              scheme: HTTP
+            timeoutSeconds: 3
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 120
+
+        # grafana container
+        - name: grafana
+          image: 'grafana/grafana:9.5.2'
+          ports:
+            - name: grafana
+              containerPort: 3000
+          env:
+            - name: GF_PATHS_DATA
+              value: /data/grafana
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: basic-monitor-secret
+                  key: user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: basic-monitor-secret
+                  key: password
+          volumeMounts:
+            - name: data-storage
+              mountPath: /data
+            - name: grafana-datasource
+              mountPath: /etc/grafana/provisioning/datasources
+              subPath: doris-cluster-datasource.yml
+            - name: grafana-dashboard
+              mountPath: /etc/grafana/provisioning/dashboards
+              subPath: doris-cluster-dashboards.json
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+              scheme: HTTP
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+
+
+---
+# Doris monitor configmap, include configs of prometheus and grafana.
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: basic-monitor-config
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+data:
+  # prometheus config
+  prometheus.yml: |
+    "see: prometheus.yml"
+
+  # grafana datasource: doris
+  datasource.yml: |
+    "see: doris-cluster-datasource.yml"
+
+  # grafana dashboard config
+  dashboards.json: |
+    "see: doris-cluster-dashboards.json"
+
+---
+# Doris monitor secret, include admin account username and password of grafana.
+
+kind: Secret
+apiVersion: v1
+metadata:
+  name: basic-monitor-secret
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+type: Opaque
+data:
+  user: YWRtaW4=
+  password: YWRtaW4=
+
+
+

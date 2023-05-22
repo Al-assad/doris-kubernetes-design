@@ -49,6 +49,10 @@ spec:
         app.kubernetes.io/instance: basic
         app.kubernetes.io/component: cn
         app.kubernetes.io/managed-by: doris-operator
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: '8040'
+        prometheus.io/scrape: 'true'
     spec:
       volumes:
         - name: conf
