@@ -1,0 +1,48 @@
+# Cluster role for Doris monitor.
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: doris-monitor
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+rules:
+  - apiGroups: [ "" ]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+    verbs: [ "get", "list", "watch" ]
+  - nonResourceURLs: [ "/metrics" ]
+    verbs: [ "get" ]
+
+---
+# Cluster role binding for per doris cluster namespace.
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: doris-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: doris-cluster
+    app.kubernetes.io/instance: basic
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/managed-by: doris-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: doris-monitor
+    namespace: default
