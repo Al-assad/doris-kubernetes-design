@@ -1,0 +1,37 @@
+# Doris Cluster Monitor CRD
+# A prometheus & grafana instance containing the specified cluster will be automatically generated
+
+kind: DorisMonitor
+apiVersion: doris.apache.org/v1alpha1
+metadata:
+  name: basic-monitor
+spec:
+  # required: DorisCluster to be monitored
+  cluster:
+    name: basic
+    namespace: default
+
+  # Prometheus
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.37.8
+    # optional: prometheus data retention time
+    retentionTime: 7d
+    # optional: prometheus process command option, https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+    commandOptions: []
+
+  # Grafana
+  grafana:
+    baseImage: grafana/grafana
+    version: 9.5.2
+    # optional: default grafana admin username
+    adminUser: admin
+    # optional: default grafana admin password
+    adminPassword: admin
+    # or ref to secret
+    # adminSecret: basic-monitor-secret
+
+  # monitor container resource requests
+  requests:
+    cpu: 500m
+    memory: 500M

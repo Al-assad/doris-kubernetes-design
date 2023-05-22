@@ -1,0 +1,26 @@
+# Doris cluster initializer,
+# define the default query account password for Doris and initialize the sql script.
+
+apiVersion: doris.apache.org/v1alpha1
+kind: DorisInitializer
+metadata:
+  name: initialize-basic
+spec:
+  # required: target doris cluster cr name/namespace
+  cluster:
+    name: basic
+    namespace: default
+
+  image: tnir/mysqlclient
+
+  # optional: default root & admin user password
+  rootPassword: ""
+  adminPassword: ""
+  # or refer to secret:
+  # passwordSecret: doris-secret
+
+  # optional: doris init sqls
+  initSql: |
+    create database example;
+  # or refer to configmap
+  # initSqlConfigmap: doris-initsql

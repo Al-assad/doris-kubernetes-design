@@ -1,0 +1,74 @@
+# Doris Cluster CRD, include FE, BE, CN, Broker components.
+
+kind: DorisCluster
+apiVersion: doris.apache.org/v1alpha1
+metadata:
+  name: basic
+spec:
+  version: 1.2.2-x86_64
+  imagePullPolicy: IfNotPresent
+
+  # Doris FE
+  fe:
+    baseImage: apache/doris-fe
+    replicas: 3
+    # extra CN config, see: https://doris.apache.org/docs/dev/admin-manual/config/fe-config/
+    config: []
+    requests:
+      cpu: 4
+      memory: 16Gi
+      storage: 200Gi
+    # k8s storage class name for pvc, optional
+    storageClassName: local
+    serviceType: ClusterIP
+
+  # Doris BE
+  be:
+    baseImage: apache/doris-be
+    replicas: 3
+    # extra CN config, see: https://doris.apache.org/docs/dev/admin-manual/config/be-config
+    config: []
+    requests:
+      cpu: 4
+      memory: 8Gi
+      storage: 500Gi
+    # k8s storage class name for pvc, optional
+    storageClassName: local
+
+  # Doris CN
+  cn:
+    baseImage: apache/doris-cn
+    replicas: 3
+    # extra CN config, see: https://doris.apache.org/docs/dev/admin-manual/config/be-config
+    config: []
+    requests:
+      cpu: 4
+      memory: 4Gi
+
+  # Doris Broker
+  broker:
+    baseImage: apache/doris-broker
+    replicas: 2
+    config: []
+    request:
+      cpu: 2
+      memory: 4Gi
+
+  # Extra Hadoop config (optional)
+  hadoop-conf:
+    hosts:
+      - ip: 10.233.123.189
+        name: hadoop-01
+      - ip: 10.233.123.179
+        name: hadoop-02
+      - ip: 10.233.123.179
+        name: hadoop-03
+    config:
+      hdfs-site.xml: |
+        <configuration>
+        ...
+        </configuration>
+      hive-site.xml: |
+        <configuration>
+        ...
+        </configuration>

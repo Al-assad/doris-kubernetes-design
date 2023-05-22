@@ -1,0 +1,47 @@
+# Doris periodic backup CRD
+
+kind: DorisScheduledBackup
+apiVersion: doris.apache.org/v1alpha1
+metadata:
+  name: basic-backup-1
+spec:
+  # required: target DorisCluster
+  cluster:
+    name: basic
+    namespace: default
+
+  # required: backup scheduling cron
+  schedule: "*/2 * * * *"
+
+  # optional: max backup retry limit
+  maxRetryLimit: 6
+
+  # doris storage repository
+  repository:
+    name: test_repo
+    provider: S3
+    location:  "s3a://bucket_s3/backup"
+    properties:
+      - "aws.s3.access_key": "XXXXXXXXXXXXXXXXX"
+      - "aws.s3.secret_key": "yyyyyyyyyyyyyyyyyyyyyyyy"
+      - "aws.s3.endpoint": "s3.us-east-1.amazonaws.com"
+
+  # backup database
+  database: example_db
+
+  # optional: include tables
+  include:
+    - table: example_table1
+    - table: example_table2
+      partition:
+        - p1
+        - p2
+
+  # optional: exclude tables
+  exclude:
+    - table: example_table4
+
+  # optional: extra backup properties
+  properties:
+    - "type": "full"
+    - "timeout": "3600"

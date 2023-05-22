@@ -1,0 +1,43 @@
+# Automatic Scaling CRD for Doris Cluster
+
+kind: DorisClusterAutoscaler
+apiVersion: doris.apache.org/v1alpha1
+metadata:
+  name: basic-autoscaler
+spec:
+  # required: doris cluster cr name/namespace
+  cluster:
+    name: basic
+    namespace: default
+
+  # Doris CN auto scaler
+  cn:
+    # hpa spec: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+    hpaSpec:
+      maxReplicas: 10
+      minReplicas: 1
+      metrics:
+        - type: Resource
+          resource:
+            name: memory
+            target:
+              averageUtilization: 80
+              type: Utilization
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              averageUtilization: 80
+              type: Utilization
+      behavior:
+        scaleUp:
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 15
+        scaleDown:
+          policies:
+            - stabilizationWindowSeconds: 300
+            - type: Pods
+              value: 1
+              periodSeconds: 60
