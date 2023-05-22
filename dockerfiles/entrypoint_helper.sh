@@ -42,6 +42,19 @@ doris_error() {
   exit 1
 }
 
+# Get the FQDN DNS of the current container.
+myself_host() {
+  if [[ -n $POD_NAME ]]; then
+    if [[ -n $POD_NAMESPACE ]]; then
+      echo "${POD_NAME}.${POD_NAMESPACE}"
+    else
+      echo "${POD_NAME}"
+    fi
+  else
+    hostname -f
+  fi
+}
+
 # Injects an entry in "key=value" format into the specified file when it does not exist.
 inject_item_into_conf_file() {
   local conf_file=$1

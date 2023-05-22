@@ -110,6 +110,16 @@ spec:
           env:
             - name: FE_SVC
               value: basic-fe
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
             - name: ACC_USER
               valueFrom:
                 secretKeyRef:

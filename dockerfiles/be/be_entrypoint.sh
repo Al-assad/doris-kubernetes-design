@@ -10,8 +10,8 @@ source entrypoint_helper.sh
 
 BE_CONF_FILE=${DORIS_HOME}/be/conf/be.conf
 
-# pod fqdn host
-declare POD_HOST
+# self fqdn host
+declare SELF_HOST
 # doris be heartbeat port
 declare HEARTBEAT_PORT
 # doris fe query port
@@ -24,7 +24,7 @@ BE_PROBE_TIMEOUT=60
 
 # collect env info from container
 collect_env() {
-  POD_HOST=$(hostname -f)
+  SELF_HOST=$(myself_host)
   HEARTBEAT_PORT=$(get_value_from_conf_file "$BE_CONF_FILE" 'heartbeat_service_port' 9050)
   if [[ -z $FE_QUERY_PORT ]]; then
     FE_QUERY_PORT=9030
@@ -50,11 +50,11 @@ add_self() {
   expire=$((start + BE_PROBE_TIMEOUT))
 
   while true; do
-    doris_note "Add myself($POD_HOST:$HEARTBEAT_PORT) to cluster as BACKEND..."
-    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$FE_QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD BACKEND \"$POD_HOST:$HEARTBEAT_PORT\";"
+    doris_note "Add myself($SELF_HOST:$HEARTBEAT_PORT) to cluster as BACKEND..."
+    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$FE_QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD BACKEND \"$SELF_HOST:$HEARTBEAT_PORT\";"
 
     # check if it was added successfully
-    if show_backends | grep -q -w "$POD_HOST" &>/dev/null; then
+    if show_backends | grep -q -w "$SELF_HOST" &>/dev/null; then
       doris_note "Add myself to cluster successfully."
       break
     fi

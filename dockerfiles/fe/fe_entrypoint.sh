@@ -9,8 +9,8 @@ source entrypoint_helper.sh
 
 FE_CONF_FILE=${DORIS_HOME}/fe/conf/fe.conf
 
-# pod fqdn host
-declare POD_HOST
+# self fqdn host
+declare SELF_HOST
 # pod index for k8s stateful set
 declare POD_INDEX
 # doris edit log port
@@ -36,8 +36,8 @@ show_frontends() {
 
 # collect env info from container
 collect_env() {
-  POD_HOST=$(hostname -f)
-  POD_INDEX=$(echo "$POD_HOST" | awk -F'.' '{print $1}' | awk -F'-' '{print $NF}')
+  SELF_HOST=$(myself_host)
+  POD_INDEX=$(echo "$SELF_HOST" | awk -F'.' '{print $1}' | awk -F'-' '{print $NF}')
   EDIT_LOG_PORT=$(get_value_from_conf_file "$FE_CONF_FILE" 'edit_log_port' 9010)
   QUERY_PORT=$(get_value_from_conf_file "$FE_CONF_FILE" 'query_port' 9030)
 }
@@ -77,7 +77,7 @@ probe_leader_for_pod0() {
     doris_warn "No FE leader yet."
     # no member exists, declare myself as master FE
     if [[ -z $members ]]; then
-      doris_note "Declare myself as master FE: $POD_HOST"
+      doris_note "Declare myself as master FE: $SELF_HOST"
       FE_LEADER=""
       break
     fi
@@ -129,11 +129,11 @@ add_self() {
   expire=$((start + FE_PROBE_TIMEOUT))
 
   while true; do
-    doris_note "Add myself($POD_HOST:$EDIT_LOG_PORT) to FE leader($FE_LEADER:$EDIT_LOG_PORT) as FOLLOWER..."
-    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD FOLLOWER \"$POD_HOST:$EDIT_LOG_PORT\";"
+    doris_note "Add myself($SELF_HOST:$EDIT_LOG_PORT) to FE leader($FE_LEADER:$EDIT_LOG_PORT) as FOLLOWER..."
+    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD FOLLOWER \"$SELF_HOST:$EDIT_LOG_PORT\";"
 
     # check if it was added successfully
-    if show_frontends | grep -q -w "$POD_HOST" &>/dev/null; then
+    if show_frontends | grep -q -w "$SELF_HOST" &>/dev/null; then
       doris_note "Add myself to cluster successfully."
       break
     fi
@@ -158,7 +158,7 @@ create_opr_account() {
 
   while true; do
     doris_note "Create doris user($ACC_USER) for internal node operation..."
-    timeout 15 mysql --connect-timeout 2 -h "$POD_HOST" -P "$QUERY_PORT" -uroot --skip-column-names --batch -e "CREATE USER $ACC_USER IDENTIFIED BY '$ACC_PWD'; GRANT NODE_PRIV, ADMIN_PRIV ON RESOURCE * TO '$ACC_USER';"
+    timeout 15 mysql --connect-timeout 2 -h "$SELF_HOST" -P "$QUERY_PORT" -uroot --skip-column-names --batch -e "CREATE USER $ACC_USER IDENTIFIED BY '$ACC_PWD'; GRANT NODE_PRIV, ADMIN_PRIV ON RESOURCE * TO '$ACC_USER';"
 
     # check if user was created successfully
     if show_grants | grep -q -w "$ACC_USER" &>/dev/null; then

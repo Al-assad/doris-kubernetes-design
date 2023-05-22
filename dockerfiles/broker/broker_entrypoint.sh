@@ -10,8 +10,8 @@ source entrypoint_helper.sh
 
 BROKER_CONF_FILE=${DORIS_HOME}/broker/conf/apache_hdfs_broker.conf
 
-# pod fqdn host
-declare POD_HOST
+# self fqdn host
+declare SELF_HOST
 # doris fe query port
 declare FE_QUERY_PORT
 # doris broker ipc port
@@ -24,7 +24,7 @@ PROBE_TIMEOUT=60
 
 # collect env info from container
 collect_env() {
-  POD_HOST=$(hostname -f)
+  SELF_HOST=$(hostname -f)
   BROKER_IPC_PORT=$(get_value_from_conf_file "$BROKER_CONF_FILE" 'broker_ipc_port' 8000)
   if [[ -z $FE_QUERY_PORT ]]; then
     FE_QUERY_PORT=9030
@@ -45,11 +45,11 @@ add_self() {
   expire=$((start + PROBE_TIMEOUT))
 
   while true; do
-    doris_note "Add myself($POD_HOST:$BROKER_IPC_PORT) to cluster as BROKER..."
-    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$FE_QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD BROKER \"$POD_HOST:$BROKER_IPC_PORT\";"
+    doris_note "Add myself($SELF_HOST:$BROKER_IPC_PORT) to cluster as BROKER..."
+    timeout 15 mysql --connect-timeout 2 -h "$FE_SVC" -P "$FE_QUERY_PORT" -u"$ACC_USER" -p"$ACC_PWD" --skip-column-names --batch -e "ALTER SYSTEM ADD BROKER \"$SELF_HOST:$BROKER_IPC_PORT\";"
 
     # check if it was added successfully
-    if show_brokers | grep -q -w "$POD_HOST" &>/dev/null; then
+    if show_brokers | grep -q -w "$SELF_HOST" &>/dev/null; then
       doris_note "Add myself to cluster successfully."
       break
     fi
