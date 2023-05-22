@@ -5,7 +5,7 @@ apiVersion: doris.apache.org/v1alpha1
 metadata:
   name: basic
 spec:
-  version: 1.2.2-x86_64
+  version: 1.2.3
   imagePullPolicy: IfNotPresent
 
   # Doris FE
