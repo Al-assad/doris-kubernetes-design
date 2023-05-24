@@ -108,7 +108,7 @@ metadata:
     app.kubernetes.io/component: broker
     app.kubernetes.io/managed-by: doris-operator
 data:
-  apache_hdfs_broker: |
+  apache_hdfs_broker.conf: |
     broker_ipc_port = 8000
     client_expire_seconds = 3600
   log4j.properties: |
