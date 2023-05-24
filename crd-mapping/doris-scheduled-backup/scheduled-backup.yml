@@ -102,7 +102,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: basic-doris-backup-scheduler
+  name: basic-doris-backup-conf
   labels:
     app.kubernetes.io/name: doris-cluster
     app.kubernetes.io/instance: basic
