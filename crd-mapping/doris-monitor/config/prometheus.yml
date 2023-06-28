@@ -14,7 +14,7 @@ scrape_configs:
         role: pod
         namespaces:
           names:
-            - tidb
+            - default
     tls_config:
       insecure_skip_verify: true
     relabel_configs:
@@ -86,7 +86,7 @@ scrape_configs:
         role: pod
         namespaces:
           names:
-            - tidb
+            - default
     tls_config:
       insecure_skip_verify: true
     relabel_configs:
@@ -158,7 +158,7 @@ scrape_configs:
         role: pod
         namespaces:
           names:
-            - tidb
+            - default
     tls_config:
       insecure_skip_verify: true
     relabel_configs:
